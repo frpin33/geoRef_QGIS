@@ -1,0 +1,11 @@
+; the next section is mandatory
+[general]
+name=geoRef_DIF
+email=Frederick.Pineault@mffp.gouv.qc.ca
+author=Frédérick Pineault
+qgisMinimumVersion=3.4
+description=Do geoRef
+about=Use a picture to add coordonate from GPX or Click
+version=version 0.1
+repository=https://github.com/frpin33
+; end of mandatory metadata
