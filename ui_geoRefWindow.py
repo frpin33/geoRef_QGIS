@@ -30,6 +30,7 @@ class Ui_geoRefMainWindow(object):
         self.pushButtonGPX = QtWidgets.QPushButton(self.centralwidget)
         self.pushButtonGPX.setGeometry(QtCore.QRect(600, 560, 181, 23))
         self.pushButtonGPX.setObjectName("pushButtonGPX")
+        self.pushButtonGPX.setEnabled(False)
         self.pushButtonClick = QtWidgets.QPushButton(self.centralwidget)
         self.pushButtonClick.setGeometry(QtCore.QRect(600, 480, 181, 23))
         self.pushButtonClick.setObjectName("pushButtonClick")
@@ -163,7 +164,7 @@ class dropedit(QtWidgets.QGroupBox):
         except :
             fileName = fileURL.split('file:')[1]
         
-        if isdir(fileName) :
+        if isdir(fileName):
             for child in self.children(): 
                 if child.metaObject().className() == "QLineEdit":
                     child.setText(fileName)

@@ -1,21 +1,26 @@
+# https://exiv2.org/tags.html TAGS EXIT
+# https://exiv2.org/iptc.html TAGS IPTC
+# https://exiv2.org/tags-xmp-dc.html TAGS XMP
 
 from qgis.gui import *
 from qgis.core import *
 from qgis.PyQt import QtCore, QtGui, QtWidgets
 
 from os.path import splitext, dirname, abspath, join
-from os import walk, listdir, environ
+from os import walk, listdir, environ, remove
 from fractions import Fraction
 from qimage2ndarray import array2qimage
 from PIL import Image
 import numpy as np
 import piexif
+#from iptcinfo3 import IPTCInfo
 
 from .ui_geoRefWindow import Ui_geoRefMainWindow
+from .gpxWindow import gpxWindow
 
 from . import resources
 
-fileAcceptFormat = [".jpg", ".png", ".jpeg"]
+fileAcceptFormat = [".jpg", ".jpeg"]
 
 class geoRefWindow(object): 
     def __init__(self, iface):
@@ -56,7 +61,7 @@ class geoRefWindow(object):
         self.currentObjPicture = objPicture()
         
 
-        self.ui.pushButtonGPX.clicked.connect(self.test)
+        self.ui.pushButtonGPX.clicked.connect(self.actionClickGPX)
         self.ui.pushButtonClick.clicked.connect(self.actionClickCanvas)
         self.ui.pushButtonAltitude.clicked.connect(self.changeAltitude)
         self.ui.radioButtonDD.toggled.connect(self.changeDegreeType)
@@ -81,12 +86,65 @@ class geoRefWindow(object):
     def closeMainWindow(self,ev):
         if hasattr(self, 'pinkCross'):
             self.canvas.scene().removeItem(self.pinkCross)
+        if hasattr(self, 'redLine'):
+                self.canvas.scene().removeItem(self.redLine)
 
 
-    def test(self):
-        pass
+    def actionClickGPX(self):
+        path = self.ui.lineEditRootPath.text()
+        self.gpxUI = gpxWindow(path, self.listObjPicture)
+        strLabel = 'Le traitement s\'appliquera sur les ' + str(len(self.listObjPicture))  + ' photos sélectionnées.'
+        self.gpxUI.ui.labelNbSelect.setText(strLabel)
+        self.gpxUI.ui.buttonBox.rejected.connect(self.closeGPXWindow)
+        self.gpxUI.applyGPXDone.connect(self.applyGPXDone)
+        self.gpxUI.show()
+
+    def closeGPXWindow(self):
+        self.gpxUI.close()
+    
+    def applyGPXDone(self, newListObj):
+        
+        self.closeGPXWindow()
+        isFirstObj = True
+
+        self.listObjPicture = newListObj
+        self.ui.listAvailablePic.clear()
+
+        for obj in self.listObjPicture :
+
+            listItem = QtWidgets.QListWidgetItem(obj.nameInList)
+            if isFirstObj :
+                firstItem = listItem
+                isFirstObj = False
+
+            obj.idInList =id(listItem)
+       
+            if obj.isCoordonate :
+                color = QtGui.QColor(QtCore.Qt.darkGreen)
+                listItem.setForeground(QtGui.QBrush(color))
+            elif obj.isEXIF :
+                color = QtGui.QColor(QtCore.Qt.red)
+                listItem.setForeground(QtGui.QBrush(color))
+            else :
+                color = QtGui.QColor(QtCore.Qt.darkRed)
+                listItem.setForeground(QtGui.QBrush(color))
+
+            self.ui.listAvailablePic.addItem(listItem)  
+        
+        self.newPictureSelection(firstItem) 
+        self.ui.listAvailablePic.setCurrentItem(firstItem)
+        
+
 
     def actionClickCanvas(self):
+
+        if self.crsQGIS != QgsProject.instance().crs().authid() :
+            self.crsQGIS = QgsProject.instance().crs().authid()
+            crsU = QgsCoordinateReferenceSystem(self.crsUniversal)
+            crsQ = QgsCoordinateReferenceSystem(self.crsQGIS)
+            self.coordQ2U = QgsCoordinateTransform(crsQ, crsU, QgsProject.instance())
+            self.coordU2Q = QgsCoordinateTransform(crsU, crsQ, QgsProject.instance())
+            self.ui.labelEPSG.setText(self.crsQGIS)
 
         self.clickTool = QgsMapToolEmitPoint(self.canvas)
         self.canvas.setMapTool(self.clickTool)
@@ -105,16 +163,28 @@ class geoRefWindow(object):
 
         self.ui.pushButtonCancelClick.setEnabled(True)
         self.ui.pushButtonCancelClick.clicked.connect(self.cancelClickCanvas)
+
+        self.itemInEdit = self.ui.listAvailablePic.currentItem()
+        self.ui.listAvailablePic.itemClicked.disconnect(self.newPictureSelection)
+        self.ui.listAvailablePic.itemClicked.connect(self.keepCurrentSelection)
     
+    def keepCurrentSelection(self, item):
+        self.ui.listAvailablePic.setCurrentItem(self.itemInEdit)
+
     def cancelClickCanvas(self):
 
         self.ui.pushButtonApplyClick.setEnabled(False)
         self.ui.pushButtonCancelClick.setEnabled(False)
         self.ui.pushButtonClick.setEnabled(True)
+        
+        self.ui.listAvailablePic.itemClicked.disconnect(self.keepCurrentSelection)
+        self.ui.listAvailablePic.itemClicked.connect(self.newPictureSelection)
 
         self.canvas.unsetMapTool(self.clickTool)
         if hasattr(self, 'pinkCross'):
             self.canvas.scene().removeItem(self.pinkCross)
+        if hasattr(self, 'redLine'):
+                self.canvas.scene().removeItem(self.redLine)
         
         objPic = self.currentObjPicture
 
@@ -131,9 +201,32 @@ class geoRefWindow(object):
                 self.ui.lineEditXCoordStand.setText(xstr)
                 self.ui.lineEditYCoordStand.setText(ystr)
             elif self.ui.radioButtonDMS.isChecked() :
-                xstr = str(objPic.xDMS[0]) + "°" + str(objPic.xDMS[1]) + "'" + str(round(objPic.xDMS[2], 1)) + "''"
-                ystr = str(objPic.yDMS[0]) + "°" + str(objPic.yDMS[1]) + "'" + str(round(objPic.yDMS[2], 1)) + "''"
+                
+                if objPic.xDMS[1] >= 10 :
+                    strM = str(objPic.xDMS[1])
+                else : 
+                    strM = "0" + str(objPic.xDMS[1])
+                
+                if objPic.xDMS[2] >= 10 :
+                    strS = str(round(objPic.xDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.xDMS[2], 1))
+                
+                xstr = str(objPic.xDMS[0]) + "°" + strM + "'" + strS + "''"
+                
                 self.ui.lineEditXCoordStand.setText(xstr)
+                
+                if objPic.yDMS[1] >= 10 :
+                    strM = str(objPic.yDMS[1])
+                else : 
+                    strM = "0" + str(objPic.yDMS[1])
+                
+                if objPic.yDMS[2] >= 10 :
+                    strS = str(round(objPic.yDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.yDMS[2], 1))
+                
+                ystr = str(objPic.yDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditYCoordStand.setText(ystr)
 
         else : 
@@ -143,7 +236,8 @@ class geoRefWindow(object):
             self.ui.lineEditYCoordQGIS.setText("")
                 
         if objPic.isHeading :
-            self.ui.lineEditHeading.setText(str(round(objPic.heading,1))) 
+            strH = str(round(objPic.heading,1)) + "°"
+            self.ui.lineEditHeading.setText(strH) 
         else :
             self.ui.lineEditHeading.setText("") 
 
@@ -151,13 +245,13 @@ class geoRefWindow(object):
 
         try :
             path = self.currentObjPicture.path
-            picture = Image.open(path)
-            pictureExif = piexif.load(picture.info['exif'])
+
+            pictureExif = piexif.load(path)
             objPic = self.currentObjPicture
             
             if self.headingClick >= 0 :
                 direction = (int(round(self.headingClick)),1)
-                pictureExif['GPS'][piexif.GPSIFD.GPSImgDirectionRef] = b'T'
+                pictureExif['GPS'][piexif.GPSIFD.GPSImgDirectionRef] = 'T'
                 pictureExif['GPS'][piexif.GPSIFD.GPSImgDirection] = direction
                 objPic.isHeading = True
                 objPic.heading = int(round(self.headingClick))
@@ -169,9 +263,9 @@ class geoRefWindow(object):
             xDMS = [d,m,s]
             
             if d > 0 :
-                refLong = b'E'
+                refLong = 'E'
             else :
-                refLong = b'W'
+                refLong = 'W'
             
             deg = (abs(d),1)
             minute = (m,1)
@@ -190,9 +284,9 @@ class geoRefWindow(object):
             yDMS = [d,m,s]
             
             if d > 0 :
-                refLat = b'N'
+                refLat = 'N'
             else :
-                refLat = b'S'
+                refLat = 'S'
             
             deg = (abs(d),1)
             minute = (m,1)
@@ -212,9 +306,8 @@ class geoRefWindow(object):
             objPic.yDMS = yDMS
 
             exif_bytes = piexif.dump(pictureExif)
-            picture.save(path, exif=exif_bytes)
-            picture.close()
-            
+            piexif.insert(exif_bytes, path)
+
             color = QtGui.QColor(QtCore.Qt.darkGreen)
             self.ui.listAvailablePic.currentItem().setForeground(QtGui.QBrush(color))
             
@@ -222,6 +315,14 @@ class geoRefWindow(object):
             self.listObjPicture.remove(self.currentObjPicture)
             self.currentObjPicture = objPic
 
+            #info = IPTCInfo(path, force=True)
+            #info['keywords'].append('coordonnées approximatives')
+            #info.save_as(path)
+            #print(info.inp_charset)
+            #print(info.out_charset)
+            #path2Remove = path + "~"
+            #remove(path2Remove)
+        
         except :
             pass
 
@@ -258,14 +359,38 @@ class geoRefWindow(object):
         elif self.ui.radioButtonDMS.isChecked() :
             d = int(self.clicInitCoord[0])
             m = int((abs(self.clicInitCoord[0]) - abs(d))*60)
+            
+            if m >= 10 :
+                strM = str(m)
+            else : 
+                strM = "0" + str(m)
+            
             s = (abs(self.clicInitCoord[0]) - abs(d) - (m/60))* 3600 
-            xstr = str(d) + "°" + str(m) + "'" + str(round(s, 1)) + "''"
+            
+            if s >= 10 :
+                strS = str(round(s, 1))
+            else : 
+                strS = "0" + str(round(s, 1))
+            
+            xstr = str(d) + "°" + strM + "'" + strS + "''"
             self.ui.lineEditXCoordStand.setText(xstr)
             
             d = int(self.clicInitCoord[1])
             m = int((abs(self.clicInitCoord[1]) - abs(d))*60)
+            
+            if m >= 10 :
+                strM = str(m)
+            else : 
+                strM = "0" + str(m)
+            
             s = (abs(self.clicInitCoord[1]) - abs(d) - (m/60))* 3600 
-            ystr = str(d) + "°" + str(m) + "'" + str(round(s, 1)) + "''"
+        
+            if s >= 10 :
+                strS = str(round(s, 1))
+            else : 
+                strS = "0" + str(round(s, 1))
+
+            ystr = str(d) + "°" + strM + "'" + strS + "''"
             self.ui.lineEditYCoordStand.setText(ystr)
 
         self.isPressed = True
@@ -277,7 +402,17 @@ class geoRefWindow(object):
     def canvasMove(self,ev):
         if self.isPressed :
 
-            point = ev.mapPoint() 
+            point = ev.mapPoint()
+
+            if hasattr(self, 'redLine'):
+                self.canvas.scene().removeItem(self.redLine)
+        
+            self.redLine = QgsRubberBand(self.canvas)
+            points = [point, self.currentPoint]
+            self.redLine.setToGeometry(QgsGeometry.fromPolygonXY([points]))
+            self.redLine.setColor(QtGui.QColor(255, 0, 0))
+            self.redLine.setIconSize(10)
+
             self.clicMoveCoord = self.coordQ2U.transform(point)
             x = self.clicMoveCoord[0] - self.clicInitCoord[0]
             y = self.clicMoveCoord[1] - self.clicInitCoord[1]
@@ -290,8 +425,10 @@ class geoRefWindow(object):
                 heading = 90 - degH
             else :
                 heading = 270 - degH
+            heading = heading % 360
 
-            self.ui.lineEditHeading.setText(str(int(round(heading))))
+            strH = str(int(round(heading))) + "°"
+            self.ui.lineEditHeading.setText(strH)
             self.headingClick = heading
 
 
@@ -308,9 +445,30 @@ class geoRefWindow(object):
                 self.ui.lineEditXCoordStand.setText(xstr)
                 self.ui.lineEditYCoordStand.setText(ystr)
             elif self.ui.radioButtonDMS.isChecked() :
-                xstr = str(objPic.xDMS[0]) + "°" + str(objPic.xDMS[1]) + "'" + str(round(objPic.xDMS[2], 1)) + "''"
-                ystr = str(objPic.yDMS[0]) + "°" + str(objPic.yDMS[1]) + "'" + str(round(objPic.yDMS[2], 1)) + "''"
+                if objPic.xDMS[1] >= 10 :
+                    strM = str(objPic.xDMS[1])
+                else : 
+                    strM = "0" + str(objPic.xDMS[1])
+
+                if objPic.xDMS[2] >= 10 :
+                    strS = str(round(objPic.xDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.xDMS[2], 1))
+                
+                xstr = str(objPic.xDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditXCoordStand.setText(xstr)
+                
+                if objPic.yDMS[1] >= 10 :
+                    strM = str(objPic.yDMS[1])
+                else : 
+                    strM = "0" + str(objPic.yDMS[1])
+                
+                if objPic.yDMS[2] >= 10 :
+                    strS = str(round(objPic.yDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.yDMS[2], 1))
+                
+                ystr = str(objPic.yDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditYCoordStand.setText(ystr)
         
 
@@ -333,6 +491,8 @@ class geoRefWindow(object):
             self.ui.lineEditXCoordStand.setText("")
             self.ui.lineEditYCoordStand.setText("")
             self.ui.labelCurrentPic.setText("")
+            self.ui.lineEditAltitude.setText("")
+            self.ui.lineEditHeading.setText("")
             self.ui.progressBar.setValue(0)
             self.listObjDirectory = []
             self.listObjPicture = []
@@ -378,6 +538,10 @@ class geoRefWindow(object):
 
         
         self.importNewRoot()
+        self.ui.treeWidget.expandAll()
+        self.ui.pushButtonGPX.setEnabled(True)
+        for i in range(self.ui.treeWidget.columnCount()):
+            self.ui.treeWidget.resizeColumnToContents(i)
         self.ui.treeWidget.model().dataChanged.connect(self.checkBoxChange)
 
     def importNewRoot(self):
@@ -536,9 +700,31 @@ class geoRefWindow(object):
                 self.ui.lineEditXCoordStand.setText(xstr)
                 self.ui.lineEditYCoordStand.setText(ystr)
             elif self.ui.radioButtonDMS.isChecked() :
-                xstr = str(objPic.xDMS[0]) + "°" + str(objPic.xDMS[1]) + "'" + str(round(objPic.xDMS[2], 1)) + "''"
-                ystr = str(objPic.yDMS[0]) + "°" + str(objPic.yDMS[1]) + "'" + str(round(objPic.yDMS[2], 1)) + "''"
+                
+                if objPic.xDMS[1] >= 10 :
+                    strM = str(objPic.xDMS[1])
+                else : 
+                    strM = "0" + str(objPic.xDMS[1])
+                
+                if objPic.xDMS[2] >= 10 :
+                    strS = str(round(objPic.xDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.xDMS[2], 1))
+                
+                xstr = str(objPic.xDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditXCoordStand.setText(xstr)
+                
+                if objPic.yDMS[1] >= 10 :
+                    strM = str(objPic.yDMS[1])
+                else : 
+                    strM = "0" + str(objPic.yDMS[1])
+                
+                if objPic.yDMS[2] >= 10 :
+                    strS = str(round(objPic.yDMS[2], 1))
+                else : 
+                    strS = "0" + str(round(objPic.yDMS[2], 1))
+                
+                ystr = str(objPic.yDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditYCoordStand.setText(ystr)
 
         else : 
@@ -554,7 +740,8 @@ class geoRefWindow(object):
 
         
         if objPic.isHeading :
-            self.ui.lineEditHeading.setText(str(round(objPic.heading,1))) 
+            strH = str(round(objPic.heading,1)) + "°"
+            self.ui.lineEditHeading.setText(strH) 
         else :
             self.ui.lineEditHeading.setText("") 
 
@@ -577,8 +764,7 @@ class geoRefWindow(object):
                     newAlt = float(self.ui.lineEditAltitude.text())
                     
                     
-                    picture = Image.open(path)
-                    pictureExif = piexif.load(picture.info['exif'])
+                    pictureExif = piexif.load(path)
 
                     #Possibilité de réduire la limite si bug
                     fractAlt = Fraction(newAlt).limit_denominator()
@@ -587,8 +773,7 @@ class geoRefWindow(object):
                     pictureExif['GPS'][piexif.GPSIFD.GPSAltitude] = altitude
 
                     exif_bytes = piexif.dump(pictureExif)
-                    picture.save(path, exif=exif_bytes)
-                    picture.close()
+                    piexif.insert(exif_bytes, path)
 
                     objPic = self.currentObjPicture
                     objPic.altitude = newAlt
@@ -612,9 +797,9 @@ class geoRefWindow(object):
             self.ui.statusbar.showMessage("La photo n'a pas de fichier EXIF", 10000)
 
     def checkExif(self, obj):
-        picture = Image.open(obj.path)
+        
         try : 
-            pictureExif = piexif.load(picture.info['exif'])
+            pictureExif = piexif.load(obj.path)
             obj.isEXIF = True
         except : 
             return obj
@@ -624,6 +809,12 @@ class geoRefWindow(object):
             orientation = pictureExif['0th'][piexif.ImageIFD.Orientation] 
             obj.orientation = orientation
         except :
+            pass
+
+        try :
+            time = pictureExif['Exif'][piexif.ExifIFD.DateTimeOriginal]
+            obj.time = time
+        except:
             pass
 
         try :
@@ -681,8 +872,6 @@ class geoRefWindow(object):
         except :
             pass            
 
-        
-        picture.close()
         return obj
 
 class objDirectory:
@@ -698,7 +887,8 @@ class objPicture:
             idInList=0, 
             objDir=objDirectory(), 
             isEXIF=False, 
-            orientation=1, 
+            orientation=1,
+            time = b'', 
             isCoordonate=False,
             xStandCoord=0.0, 
             yStandCoord=0.0,
@@ -712,7 +902,8 @@ class objPicture:
         self.idInList = idInList
         self.objDir = objDir
         self.isEXIF = isEXIF
-        self.orientation = 1
+        self.orientation = orientation
+        self.time = time
         self.isCoordonate = isCoordonate
         self.xStandCoord = xStandCoord
         self.xDMS = [0.0, 0.0, 0.0]
