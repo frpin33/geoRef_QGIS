@@ -1,3 +1,16 @@
+'''
+L'entièreté du code a été réalisé par Frédérick Pineault (frederick.pineault@mffp.gouv.qc.ca)
+
+Ce dossier contient la classe qui gère la modification du EXIF via un fichier GPX, elle gère aussi la fenêtre qui permet d'ajuster 
+les paramètres de l'opération
+
+La classe gpxWindow permet de :
+    - Écrire les information EXIF d'une photo
+    - Gérer le traitement du fichier GPX pour en resortir les points
+    - Permettre à l'utilisateur de changer de UTC, de temps d'interpolation et de temps de décalage
+
+'''
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qgis.gui import *
 from qgis.core import *
@@ -29,13 +42,16 @@ class gpxWindow(QtWidgets.QMainWindow):
         self.ui.buttonBox.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False)
         self.rootPath = rootPath
         self.listPictureObj = listPictureObj
-        #self.ui.buttonBox.rejected.connect(self.closeEvent)
 
+    #Fonction appelée par le bouton du choix de chemin
+    #Ouvre la fenêtre de navigation
     def importGPXButton(self):
         fname = QtWidgets.QFileDialog.getOpenFileName(self, 'Import GPX File', self.rootPath,"GPX (*.gpx)")[0]
         if fname :
             self.ui.lineEditPathGPX.setText(fname)
 
+    #Fonction appelée lorsqu'un nouveau fichier GPX est importé
+    #Active le bouton OK qui démarre le processus 
     def newGPXPath(self):
         path = self.ui.lineEditPathGPX.text()
         if path.split('.')[-1] == "gpx":
@@ -46,6 +62,11 @@ class gpxWindow(QtWidgets.QMainWindow):
             self.ui.buttonBox.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False)
             self.ui.lineEditPathGPX.setText('')
 
+    #Fonction appelée par le bouton OK 
+    #Pour chaque photo de la liste, la fonction analyse tous les points du GPX.
+    #En fonction des paramètres (interpolation, utc, decalage), le temps de chaque point est ajusté
+    #Les points qui répondent aux critères sont moyennés pour obtenir la valeur à écrire
+    #Écris sur le EXIF les valeurs de latitude, longitude et altitude
     def addCoordFromGPX(self):
         secInterpol = self.ui.spinBoxInterpol.value()
         utc = self.ui.currentUTC

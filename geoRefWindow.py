@@ -1,6 +1,19 @@
-# https://exiv2.org/tags.html TAGS EXIT
-# https://exiv2.org/iptc.html TAGS IPTC
-# https://exiv2.org/tags-xmp-dc.html TAGS XMP
+'''
+L'entièreté du code a été réalisé par Frédérick Pineault (frederick.pineault@mffp.gouv.qc.ca)
+
+Ce dossier contient la classe principale de l'application Qt, elle est appelé par QGIS pour ouvrir la fenêtre principale
+
+Ce dossier contient deux objets qui sont utile pour le traitement des photos. Les objets permettent de concerver de l'information
+spécifique pour chacune des photos. Elles permettent de faciliter le traitement et la recherche d'information.  
+
+La classe geoRefWindow permet de :
+    - Écrire et lire les information EXIF d'une photo
+    - Visualiser les photos, les coordonnées XY, l'orientation (heading) et l'altitude
+    - Produire des coordonnées et une orientation via QGIS et la souris
+    - Modifier l'altitude d'une photo
+    - Utiliser un fichier GPX pour faire un traitement sur les photos 
+
+'''
 
 from qgis.gui import *
 from qgis.core import *
@@ -42,6 +55,9 @@ class geoRefWindow(object):
         self.iface.removePluginMenu("&geoRef_DIF", self.action)
         self.iface.removeToolBarIcon(self.action)
     
+    #Fonction appelée lorsque l'application est lancé
+    #Initialise le fenêtre principale et l'ouvre
+    #Récupération du SIG en cours
     def run(self):
     
         self.mainWindow = QtWidgets.QMainWindow()
@@ -83,13 +99,16 @@ class geoRefWindow(object):
 
         self.mainWindow.show()
 
+    #Fonction de fermeture de la fenêtre
+    #Retire la croix et la line du canvas QGIS
     def closeMainWindow(self,ev):
         if hasattr(self, 'pinkCross'):
             self.canvas.scene().removeItem(self.pinkCross)
         if hasattr(self, 'redLine'):
                 self.canvas.scene().removeItem(self.redLine)
 
-
+    #Fonction appelée par le bouton GPX
+    #Ouvre l'interface graphique qui gère le traitement
     def actionClickGPX(self):
         path = self.ui.lineEditRootPath.text()
         self.gpxUI = gpxWindow(path, self.listObjPicture)
@@ -99,9 +118,12 @@ class geoRefWindow(object):
         self.gpxUI.applyGPXDone.connect(self.applyGPXDone)
         self.gpxUI.show()
 
+    #Fonction de fermeture de la fenêtre GPX
     def closeGPXWindow(self):
         self.gpxUI.close()
     
+    #Fonction appelée à la fin du traitement GPX
+    #Rafraîchis les information des objets qui ont reçu une modication suite au traitement
     def applyGPXDone(self, newListObj):
         
         self.closeGPXWindow()
@@ -135,7 +157,9 @@ class geoRefWindow(object):
         self.ui.listAvailablePic.setCurrentItem(firstItem)
         
 
-
+    #Fonction appelée par le bouton Click on Canvas
+    #Création d'un outil de détection pour recevoir les clics sur le Canvas QGIS
+    #Rafraîchis le SIG en cours de QGIS
     def actionClickCanvas(self):
 
         if self.crsQGIS != QgsProject.instance().crs().authid() :
@@ -168,9 +192,13 @@ class geoRefWindow(object):
         self.ui.listAvailablePic.itemClicked.disconnect(self.newPictureSelection)
         self.ui.listAvailablePic.itemClicked.connect(self.keepCurrentSelection)
     
+    #Fonction qui permet de conserver l'objet de la liste lors du Click on Canvas
     def keepCurrentSelection(self, item):
         self.ui.listAvailablePic.setCurrentItem(self.itemInEdit)
 
+    #Fonction appelée par le bouton Cancel du Click on Canvas
+    #Réinitialise les informations de la photos
+    #Retir la détection du clic, la croix et la ligne de QGIS
     def cancelClickCanvas(self):
 
         self.ui.pushButtonApplyClick.setEnabled(False)
@@ -241,6 +269,8 @@ class geoRefWindow(object):
         else :
             self.ui.lineEditHeading.setText("") 
 
+    #Fonction appelée par le bouton Apply de Click on Canvas
+    #Écris sur le EXIF de la photo des nouvelles informations
     def applyClickCanvas(self) :
 
         try :
@@ -328,6 +358,9 @@ class geoRefWindow(object):
 
         self.cancelClickCanvas()
 
+    #Fonction appelée lors d'un clic de souris sur le canvas QGIS
+    #Ajoute la croix rose sur le canvas
+    #Récupére les coordonnées et les afficher
     def canvasPress(self, ev):
         
         self.currentPoint = ev.mapPoint()
@@ -398,7 +431,8 @@ class geoRefWindow(object):
             self.ui.pushButtonApplyClick.setEnabled(True)
             self.ui.pushButtonApplyClick.clicked.connect(self.applyClickCanvas)
 
-
+    #Fonction appelée lors d'un déplacement de la souris sur le canvas QGIS
+    #Cacul le heading via les coordonnées en cours de la souris
     def canvasMove(self,ev):
         if self.isPressed :
 
@@ -431,10 +465,12 @@ class geoRefWindow(object):
             self.ui.lineEditHeading.setText(strH)
             self.headingClick = heading
 
-
+    #Fonction appelée lorsque le bouton de la souris est relâché
     def canvasRelease(self, ev):
         self.isPressed = False
 
+    #Fonction appelée lorsqu'il y a un changement entre l'affichage DMS et DD
+    #Réalise la traduction DD vers DMS
     def changeDegreeType(self):
 
         if self.currentObjPicture.path and self.currentObjPicture.isCoordonate :
@@ -471,7 +507,8 @@ class geoRefWindow(object):
                 ystr = str(objPic.yDMS[0]) + "°" + strM + "'" + strS + "''"
                 self.ui.lineEditYCoordStand.setText(ystr)
         
-
+    #Fonction appelée par le bouton du choix de chemin
+    #Ouvre la fenêtre de navigation
     def importDirButton(self):
         #Lié vers le dossier Picture (comment ca fonctionne si en francais?)
         path = join(join(environ['USERPROFILE']), 'Pictures') 
@@ -479,6 +516,11 @@ class geoRefWindow(object):
         if fname:
             self.ui.lineEditRootPath.setText(fname)
 
+    #Fonction appelée lors de l'ouverture d'un nouveau chemin
+    #Rafraîchis l'interface utilisateur pour considérer le nouveau chemin
+    #Récupère tous les sous dossiers du chemin racine
+    #Création d'objet Directory (fichier) pour chaque sous dossiers
+    #Lance le traitement du nouveau chemin et de ses sous dossiers
     def newRootPath(self) :
 
         try : 
@@ -544,6 +586,9 @@ class geoRefWindow(object):
             self.ui.treeWidget.resizeColumnToContents(i)
         self.ui.treeWidget.model().dataChanged.connect(self.checkBoxChange)
 
+    #Fonction qui réalise le traitement des sous dossiers 
+    #Récupère les photos des formats acceptés
+    #Lance le traitement de la gestion des photos
     def importNewRoot(self):
         currentImportedDir = 0
         if self.listObjDirectory :
@@ -574,6 +619,8 @@ class geoRefWindow(object):
             self.ui.labelProgress.setText(STRbar)
             self.ui.progressBar.setValue(currentImportedDir)
     
+    #Fonction qui ajoute la photo dans la liste
+    #Lance la lecture du EXIF
     def addPictureObject(self, path, objDir) :
         picName = path.split("/")[-1]
         listItem = QtWidgets.QListWidgetItem(picName)
@@ -599,7 +646,8 @@ class geoRefWindow(object):
         self.ui.listAvailablePic.addItem(listItem)    
         self.listObjPicture.append(objPic)
 
-
+    #Fonction appelée lorsqu'un dossier change de type de sélection
+    #Retire/Ajoute les photos correspondantes au dossier en question 
     def checkBoxChange(self) :
 
         treeItems = self.ui.treeWidget.findItems("", QtCore.Qt.MatchContains| QtCore.Qt.MatchRecursive)
@@ -647,7 +695,10 @@ class geoRefWindow(object):
             else :
                 continue
             break
-                    
+
+    #Fonction appelée lorsqu'une nouvelle photo est sélectionnée
+    #Rafraîchis les information et l'image sur l'interface graphique
+    #Rafraîchis le SIG QGIS en cours                
     def newPictureSelection(self, item):
         if self.crsQGIS != QgsProject.instance().crs().authid():
 
@@ -756,6 +807,7 @@ class geoRefWindow(object):
 
         picture.close()
 
+    #Fonction appelée lorsqu'on veut modifier l'altitude d'une photo
     def changeAltitude(self):
         if self.currentObjPicture.path and self.currentObjPicture.isEXIF : 
             if self.isEditingAltitude :
@@ -796,6 +848,8 @@ class geoRefWindow(object):
         elif self.currentObjPicture.isEXIF == False:
             self.ui.statusbar.showMessage("La photo n'a pas de fichier EXIF", 10000)
 
+    #Fonction qui réalise l'analyse de l'EXIF d'une photo
+    #Récupère, si possible, la rotation, le temps original, latitude, longitude, altitude, orientation
     def checkExif(self, obj):
         
         try : 
@@ -874,6 +928,8 @@ class geoRefWindow(object):
 
         return obj
 
+#Classe de l'objet lié à un dossier
+#Contiens le chemin du dossier, le nom du dossier, le id du nom et le bool de la sélection
 class objDirectory:
     def __init__(self, path="", nameInTree="", idInTree=0, isCheck=0):
         self.path = path
@@ -881,6 +937,10 @@ class objDirectory:
         self.idInTree = idInTree
         self.isCheck = isCheck # Checked = 2, unchecked = 0
 
+#Classe de l'objet lié à une photo
+#Contiens le chemin, le nom de la photo, le id du nom, l'objet lié au dossier, la présence d'un EXIF,
+#le code de rotation, le temps, la présence de coordonnées, longitude, latitude,
+#la présence de l'altitude, l'altitude, la présence de l'orientation et l'orientation
 class objPicture:
     def __init__(self, path="", 
             nameInList="", 
