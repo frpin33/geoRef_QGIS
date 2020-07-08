@@ -189,7 +189,10 @@ class geoRefWindow(object):
         self.ui.pushButtonCancelClick.clicked.connect(self.cancelClickCanvas)
 
         self.itemInEdit = self.ui.listAvailablePic.currentItem()
-        self.ui.listAvailablePic.itemClicked.disconnect(self.newPictureSelection)
+        try :
+            self.ui.listAvailablePic.itemClicked.disconnect(self.newPictureSelection)
+        except :
+            pass
         self.ui.listAvailablePic.itemClicked.connect(self.keepCurrentSelection)
     
     #Fonction qui permet de conserver l'objet de la liste lors du Click on Canvas
@@ -205,7 +208,10 @@ class geoRefWindow(object):
         self.ui.pushButtonCancelClick.setEnabled(False)
         self.ui.pushButtonClick.setEnabled(True)
         
-        self.ui.listAvailablePic.itemClicked.disconnect(self.keepCurrentSelection)
+        try :
+            self.ui.listAvailablePic.itemClicked.disconnect(self.keepCurrentSelection)
+        except :
+            pass
         self.ui.listAvailablePic.itemClicked.connect(self.newPictureSelection)
 
         self.canvas.unsetMapTool(self.clickTool)

@@ -92,7 +92,10 @@ class gpxWindow(QtWidgets.QMainWindow):
                 timeofDay = int(strTime[11:13])*3600 + int(strTime[14:16])*60 + int(strTime[17:19])
                 timeUp = timeofDay+secInterpol
                 timeDown = timeofDay-secInterpol
-                listGeometry = []
+                geoUp = None
+                geoDown = None
+                timeDiffUp = secInterpol
+                timeDiffDown = secInterpol
                 for feature in vLayer.getFeatures():
                     try :
                         featTimeAttr = feature.attribute('time')
@@ -102,28 +105,40 @@ class gpxWindow(QtWidgets.QMainWindow):
                         if featTimeAttr.date() == objDate : 
                             fTime = featTimeAttr.time()
                             timeofFeat = (fTime.hour()+utc)*3600 + fTime.minute()*60 + fTime.second() + secDecalage
-                            if timeofFeat > timeDown and timeofFeat < timeUp :
-                                listGeometry.append(feature.geometry())
+                            if timeofFeat < timeofDay :
+                                currentDiff = timeofFeat - timeDown
+                                if currentDiff <= timeDiffDown :
+                                    timeDiffDown = timeofFeat
+                                    geoDown = feature.geometry()
+                            
+                            elif timeofFeat > timeofDay :
+                                currentDiff = timeUp - timeofFeat
+                                if currentDiff <= timeDiffUp :
+                                    timeDiffUp = timeofFeat
+                                    geoUp = feature.geometry()
+                            
+                            #listGeometry.append(feature.geometry())
                 
                 #Très important de vérifié la compatibilité, fonctionne pour mon GPX, en général toujours le cas
-                
-                if listGeometry :
-                    
-                    
-                    nbHit = len(listGeometry)
-                    sumXValue = 0.0
-                    sumYValue = 0.0
-                    sumZValue = 0.0
-                    
-                    for geo in listGeometry:
-                        sumXValue += geo.get().x()
-                        sumYValue += geo.get().y()
-                        sumZValue += geo.get().z()
-                    
+                delta = timeDiffUp - timeDiffDown
+                if geoDown and geoUp and delta <= secInterpol :
+
+                    prop = (timeofDay - timeDiffDown) / delta
+                    invProp = 1 - prop
+
+                    upX = geoUp.get().x()
+                    upY = geoUp.get().y()
+                    upZ = geoUp.get().z()
+
+                    downX = geoDown.get().x()
+                    downY = geoDown.get().y()
+                    downZ = geoDown.get().z()
+                     
+                    xCoord = upX * prop + downX * invProp
+                    yCoord = upY * prop + downY * invProp
+                    zCoord = upZ * prop + downZ * invProp
+
                     pictureExif = piexif.load(obj.path)
-                    
-                    xCoord = sumXValue/nbHit
-                    
                     
                     d = int(xCoord)
                     m = int((abs(xCoord) - abs(d))*60)
@@ -145,8 +160,6 @@ class gpxWindow(QtWidgets.QMainWindow):
                     pictureExif['GPS'][piexif.GPSIFD.GPSLongitudeRef] = refLong
                     pictureExif['GPS'][piexif.GPSIFD.GPSLongitude] = longitude
                     
-                    yCoord = sumYValue/nbHit
-                    
                     d = int(yCoord)
                     m = int((abs(yCoord) - abs(d))*60)
                     s = (abs(yCoord) - abs(d) - (m/60))* 3600 
@@ -166,8 +179,6 @@ class gpxWindow(QtWidgets.QMainWindow):
 
                     pictureExif['GPS'][piexif.GPSIFD.GPSLatitudeRef] = refLat
                     pictureExif['GPS'][piexif.GPSIFD.GPSLatitude] = latitude
-                    
-                    zCoord = sumZValue/nbHit
 
                     fractAlt = Fraction(zCoord).limit_denominator()
                     altitude = (fractAlt.numerator, fractAlt.denominator)
