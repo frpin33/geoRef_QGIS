@@ -95,13 +95,13 @@ class Ui_gpxWindow(object):
         _translate = QtCore.QCoreApplication.translate
         gpxWindow.setWindowTitle(_translate("gpxWindow", "Ajout par GPX"))
         self.label.setText(_translate("gpxWindow", "Temps d\'interpolation maximal (s)"))
-        self.groupBox.setTitle(_translate("gpxWindow", "Path GPX"))
+        self.groupBox.setTitle(_translate("gpxWindow", "Chemin GPX"))
         self.toolButtonGPX.setText(_translate("gpxWindow", "..."))
         self.label_2.setText(_translate("gpxWindow", "Décalage Horaire ±HH:MM (UTC)"))
         self.checkBoxKeep.setText(_translate("gpxWindow", "Conserver les coordonnées existantes"))
         self.toolButtonUpUTC.setText(_translate("gpxWindow", "..."))
         self.toolButtonDownUTC.setText(_translate("gpxWindow", "..."))
-        self.label_3.setText(_translate("gpxWindow", "Décalage temporel (s)"))
+        self.label_3.setText(_translate("gpxWindow", "Décalage temporel additionnel (s)"))
         self.labelNbSelect.setText(_translate("gpxWindow", " Le traitement s\'appliquera sur les 0 photos sélectionnées."))
 
     def upArrowPress(self) :

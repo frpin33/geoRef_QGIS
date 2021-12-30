@@ -192,12 +192,12 @@
     <rect>
      <x>30</x>
      <y>180</y>
-     <width>131</width>
+     <width>171</width>
      <height>16</height>
     </rect>
    </property>
    <property name="text">
-    <string>Décalage temporel (s)</string>
+    <string>Décalage temporel additionnel (s)</string>
    </property>
   </widget>
   <widget class="QSpinBox" name="spinBoxDecalage">

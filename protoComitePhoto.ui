@@ -27,7 +27,7 @@
    <widget class="QLineEdit" name="lineEditXCoordQGIS">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>260</x>
       <y>480</y>
       <width>113</width>
       <height>20</height>
@@ -40,33 +40,33 @@
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>220</x>
+      <x>210</x>
       <y>480</y>
-      <width>21</width>
+      <width>51</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>X</string>
+     <string>Longitude</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>220</x>
+      <x>210</x>
       <y>510</y>
-      <width>16</width>
+      <width>51</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>Y</string>
+     <string>Latitude</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEditYCoordQGIS">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>260</x>
       <y>510</y>
       <width>113</width>
       <height>20</height>
@@ -89,20 +89,20 @@
      </rect>
     </property>
     <property name="text">
-     <string>From GPX</string>
+     <string>Via un fichier GPX</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButtonClick">
     <property name="geometry">
      <rect>
-      <x>600</x>
+      <x>550</x>
       <y>480</y>
-      <width>181</width>
+      <width>161</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
-     <string>From Click on Map</string>
+     <string>Via Clic sur Canvas</string>
     </property>
     <property name="checkable">
      <bool>false</bool>
@@ -124,7 +124,7 @@
    <widget class="QLineEdit" name="lineEditXCoordStand">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>380</x>
       <y>480</y>
       <width>113</width>
       <height>20</height>
@@ -137,7 +137,7 @@
    <widget class="QLineEdit" name="lineEditYCoordStand">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>380</x>
       <y>510</y>
       <width>113</width>
       <height>20</height>
@@ -157,7 +157,7 @@
      </rect>
     </property>
     <property name="title">
-     <string>Root Path</string>
+     <string>Dossier Sélectionné</string>
     </property>
     <widget class="QLineEdit" name="lineEditRootPath">
      <property name="geometry">
@@ -232,7 +232,7 @@
    <widget class="QLabel" name="labelEPSG">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>260</x>
       <y>460</y>
       <width>91</width>
       <height>16</height>
@@ -245,7 +245,7 @@
    <widget class="QLabel" name="label_4">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>380</x>
       <y>460</y>
       <width>61</width>
       <height>16</height>
@@ -258,7 +258,7 @@
    <widget class="QLineEdit" name="lineEditHeading">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>380</x>
       <y>560</y>
       <width>113</width>
       <height>20</height>
@@ -271,7 +271,7 @@
    <widget class="QLabel" name="label_6">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>380</x>
       <y>540</y>
       <width>51</width>
       <height>16</height>
@@ -284,7 +284,7 @@
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>260</x>
       <y>540</y>
       <width>47</width>
       <height>13</height>
@@ -297,7 +297,7 @@
    <widget class="QLineEdit" name="lineEditAltitude">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>260</x>
       <y>560</y>
       <width>113</width>
       <height>20</height>
@@ -307,17 +307,17 @@
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButtonAltitude">
+   <widget class="QPushButton" name="pushButtonEdit">
     <property name="geometry">
      <rect>
-      <x>310</x>
+      <x>270</x>
       <y>590</y>
-      <width>91</width>
+      <width>100</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
-     <string>Edit Parameters</string>
+     <string>Modif. Paramètres</string>
     </property>
    </widget>
    <widget class="QProgressBar" name="progressBar">
@@ -346,7 +346,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Directory Imported : 0/0</string>
+     <string>Dossiers traitées : 0/0</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
@@ -384,20 +384,20 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButtonApplyClick">
+   <widget class="QPushButton" name="pushButtonApplySingle">
     <property name="enabled">
      <bool>false</bool>
     </property>
     <property name="geometry">
      <rect>
-      <x>610</x>
+      <x>560</x>
       <y>510</y>
-      <width>75</width>
+      <width>115</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
-     <string>Apply</string>
+     <string>Appliquer Image Seule</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButtonCancelClick">
@@ -406,14 +406,72 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>700</x>
-      <y>510</y>
+      <x>720</x>
+      <y>480</y>
       <width>75</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
-     <string>Cancel</string>
+     <string>Annuler</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonApplyGroup">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>680</x>
+      <y>510</y>
+      <width>115</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Appliquer pour groupe</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonClone">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>590</y>
+      <width>101</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Copier Paramètres</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonShapefile">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>600</y>
+      <width>141</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Générer Shapefile de points</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="checkBoxShowPosition">
+    <property name="geometry">
+     <rect>
+      <x>45</x>
+      <y>575</y>
+      <width>121</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Afficher la position</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
